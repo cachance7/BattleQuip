@@ -2,30 +2,153 @@ import sys
 import re
 import random
 import argparse
+import curses
+import time
 
-parser = argparse.ArgumentParser(description='Process some integers.')
-parser.add_argument('integers', metavar='N', type=int, nargs='+',
-                   help='an integer for the accumulator')
-parser.add_argument('--sum', dest='accumulate', action='store_const',
-                   const=sum, default=max,
-                   help='sum the integers (default: find the max)')
+parser = argparse.ArgumentParser(description='Play a game of Battleship.')
+#parser.add_argument('integers', metavar='N', type=int,
+#                   help='an integer for the accumulator')
+#parser.add_argument('--sum', dest='accumulate', action='store_const',
+#                   const=sum, default=max,
+#                   help='sum the integers (default: find the max)')
 
 args = parser.parse_args()
-print(args.accumulate(args.integers))
+#print(args.accumulate(args.integers))
 
-def print_boards(*boards, **kwargs):
-    attacks = kwargs['attacks'] if 'attacks' in kwargs else []
-    height = 10
-    width = 10
+class dstate:
+    INIT = 0
+    HIT  = 1
+    MISS = 2
+    SHIP_OK = 3
+    SHIP_DANGER = 4
+    SHIP_SUNK = 5
+
+def print_boards(stdscr, *boards, **kwargs):
+    """Prints an ASCII board representation using curses.
+
+    boards:
+        One or more Board objects to use in a side-by-side representation.
+
+    kwargs:
+        attacks: an array of positions corresponding to attacks
+        height: board height
+        width: board width
+        ship_display: the Ship property to use in the character display
+    """
+    attacks      = kwargs['attacks']      if 'attacks'      in kwargs else []
+    height       = kwargs['height']       if 'height'       in kwargs else 10
+    width        = kwargs['width']        if 'width'        in kwargs else 10
+    ship_display = kwargs['ship_display'] if 'ship_display' in kwargs else 'size'
+
     visual_boards = []
 
+    states = {
+             '*': dstate.INIT,
+             'x': dstate.HIT,
+             'o': dstate.MISS
+             }
+
+    # Build the internal display structure in layers
     for b in boards:
+        # All spaces start out empty (represented by a *)
         visual_boards.append([['*' for x in xrange(width)] for x in xrange(height)])
+        # Add in the ships
         for s in b.ships:
             for p in s.positions:
-                visual_boards[-1][p[0]][p[1]] = s.display_char
+                visual_boards[-1][p[0]][p[1]] = getattr(s, ship_display)
+
+    curses.start_color()
+    try:
+        curses.curs_set(0)
+    except curses.error:
+        pass
+
+    offset_y = 2
+    offset_x = 2
+    display_height = height+offset_y
+    display_width = width+offset_x
+    display_buffer = 2
+
+    display = curses.newpad(display_height,
+            (display_width + display_buffer) * len(boards))
+
+    #curses.init_pair(dstate.INIT, curses.COLOR_WHITE, curses.COLOR_BLACK)
+    curses.init_pair(dstate.HIT, curses.COLOR_BLACK, curses.COLOR_RED)
+    curses.init_pair(dstate.MISS, curses.COLOR_BLACK, curses.COLOR_BLUE)
+    curses.init_pair(dstate.SHIP_OK, curses.COLOR_BLACK, curses.COLOR_RED)
+    curses.init_pair(dstate.SHIP_DANGER, curses.COLOR_BLACK, curses.COLOR_YELLOW)
+    curses.init_pair(dstate.SHIP_SUNK, curses.COLOR_BLACK, curses.COLOR_RED)
+
+    for c in range(0, len(visual_boards)):
+        for j in range(0, width):
+            display.addstr(0, offset_x + c * (width+3) + j, str(j+1))
+
+    for i in range(0, height):
+        for c in range(0, len(visual_boards)):
+            display.addstr(offset_y + i, c * (width+3), chr(i + 65))
+            for j in range(0, width):
+                state_chr = str(visual_boards[c][i][j])
+                state = states[state_chr] if state_chr in states else dstate.INIT
+                display.addstr(offset_y + i, offset_x + c * (width+3) + j, state_chr, curses.color_pair(state))
+
+    for a in attacks:
+        char = str(visual_boards[-1][a[0]][a[1]])
+        state = dstate.HIT if char != '*' else dstate.MISS
+        display.addstr(offset_y + a[0], offset_x + a[1], char, curses.color_pair(state))
+
+    curses.curs_set(2)
+    display.move(3,5)
+    display.refresh(0, 0, 0, 0, display_height, display_width)
+
+    display.nodelay(1)
+    while True:
+        try:
+            char = display.getstr()
+        except:
+            pass
+        pos = display.getyx()
+        display.addstr(1,2, str(char))
+        #display.addstr(21,2, str(pos))
+        if char == 113: break  # q
+        elif char == curses.KEY_RIGHT: display.move(pos[0],pos[1] + 1)
+        elif char == curses.KEY_LEFT: display.move(pos[0],pos[1] - 1)
+        elif char == curses.KEY_UP: display.move(pos[0] - 1, pos[1])
+        elif char == curses.KEY_DOWN: display.move(pos[0] + 1, pos[1])
+        display.refresh(0, 0, 0, 0, 1, 20)
+        curses.doupdate()
+        time.sleep(0.1)
+
+def print_boards2(*boards, **kwargs):
+    """Prints an ASCII board representation to stdout. If this were fancier
+    we'd be using curses.
+
+    boards:
+        One or more Board objects to use in a side-by-side representation.
+
+    kwargs:
+        attacks: an array of positions corresponding to attacks
+        height: board height
+        width: board width
+        ship_display: the Ship property to use in the character display
+    """
+    attacks      = kwargs['attacks']      if 'attacks'      in kwargs else []
+    height       = kwargs['height']       if 'height'       in kwargs else 10
+    width        = kwargs['width']        if 'width'        in kwargs else 10
+    ship_display = kwargs['ship_display'] if 'ship_display' in kwargs else 'size'
+
+    visual_boards = []
+
+    # Build the internal display structure in layers
+    for b in boards:
+        # All spaces start out empty (represented by a *)
+        visual_boards.append([['*' for x in xrange(width)] for x in xrange(height)])
+        # Add in the ships
+        for s in b.ships:
+            for p in s.positions:
+                visual_boards[-1][p[0]][p[1]] = getattr(s, ship_display)
+        #
         for a in attacks:
-            visual_boards[-1][a[0]][a[1]] = 'x' if visual_boards[-1][a[0]][a[1]] != '*' else 'o'
+            visual_boards[-1][a[0]][a[1]] = bcolors.RED + 'x' + bcolors.ENDC if visual_boards[-1][a[0]][a[1]] != '*' else bcolors.GREEN + 'o' + bcolors.ENDC
     sys.stdout.write('    ')
     for j in range(0, width):
         sys.stdout.write('%-3s' % (j+1))
@@ -285,22 +408,24 @@ def random_ship():
             4: Patrol()
             }[random.randint(0,5)]
 
-random.seed(123)
+if __name__ == '__main__':
 
-SHIP_COUNT = 3
-#ships = [random_ship() for i in range(0,SHIP_COUNT)]
-#ships = [Carrier(), Battleship(), Patrol()]
-#positions = []
-b = Board()
-try:
-    b.add_ship(Battleship(), 'a1', 'd')
-    b.add_ship(Carrier(), "a2", 'r')
-    b.add_ship(Battleship(), 'a9','d')
-    b.add_ship(Patrol(), (2,1),'d')
-    attacks = map(lambda s: make_coord(s).as_tuple(), ["b2","a9","a10"])
-    print_boards(b, attacks=attacks)
-except InvalidCoordException as ex:
-    print ex.message
-except InvalidPositionException as e:
-    print e.message
+    random.seed(123)
+
+    SHIP_COUNT = 3
+    #ships = [random_ship() for i in range(0,SHIP_COUNT)]
+    #ships = [Carrier(), Battleship(), Patrol()]
+    #positions = []
+    b = Board()
+    try:
+        b.add_ship(Battleship(), 'a1', 'd')
+        b.add_ship(Carrier(), "a2", 'r')
+        b.add_ship(Battleship(), 'a9','d')
+        b.add_ship(Patrol(), (2,1),'d')
+        attacks = map(lambda s: make_coord(s).as_tuple(), ["b2","a9","a10"])
+        curses.wrapper(print_boards, b, attacks=attacks, ship_display='size')
+    except InvalidCoordException as ex:
+        print ex.message
+    except InvalidPositionException as e:
+        print e.message
 
