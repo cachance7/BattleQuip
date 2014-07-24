@@ -4,6 +4,7 @@ import random
 import argparse
 import curses
 import time
+import collections
 
 parser = argparse.ArgumentParser(description='Play a game of Battleship.')
 #parser.add_argument('integers', metavar='N', type=int,
@@ -23,7 +24,126 @@ class dstate:
     SHIP_DANGER = 4
     SHIP_SUNK = 5
 
-def print_boards(stdscr, *boards, **kwargs):
+class Display(object):
+    def __init__(self, board, **kwargs):
+        self.board = board
+        self.ship_display = kwargs['ship_display'] if 'ship_display' in kwargs else 'size'
+        self.states = {
+                      '*': dstate.INIT,
+                      'x': dstate.HIT,
+                      'o': dstate.MISS
+                      }
+        curses.wrapper(self.init)
+
+    def init(self, stdscr):
+        """Initializes an ASCII board representation using curses.
+
+        Args:
+            stdscr (...):
+            board (Board): The Board object this Display will visualize
+            **kwargs:
+                ship_display: the Ship property to use in the character display
+        """
+        #attacks      = kwargs['attacks']      if 'attacks'      in kwargs else []
+        #height       = kwargs['height']       if 'height'       in kwargs else 10
+        #width        = kwargs['width']        if 'width'        in kwargs else 10
+
+        visual_boards = []
+
+        # Build the internal display structure in layers
+        #for b in boards:
+        #    # All spaces start out empty (represented by a *)
+        #    visual_boards.append([['*' for x in xrange(width)] for x in xrange(height)])
+        #    # Add in the ships
+        #    for s in b.ships:
+        #        for p in s.positions:
+        #            visual_boards[-1][p[0]][p[1]] = getattr(s, ship_display)
+
+        #curses.start_color()
+        #try:
+        #    curses.curs_set(0)
+        #except curses.error:
+        #    pass
+
+        #offset_y = 2
+        #offset_x = 2
+        self.display_height = self.board.height
+        self.display_width = self.board.width
+        self.display_buffer = 2
+
+        self.display = curses.newpad(self.display_height,
+                (self.display_width + self.display_buffer))
+
+        #curses.init_pair(dstate.INIT, curses.COLOR_WHITE, curses.COLOR_BLACK)
+        curses.init_pair(dstate.HIT, curses.COLOR_BLACK, curses.COLOR_RED)
+        curses.init_pair(dstate.MISS, curses.COLOR_BLACK, curses.COLOR_BLUE)
+        curses.init_pair(dstate.SHIP_OK, curses.COLOR_BLACK, curses.COLOR_RED)
+        curses.init_pair(dstate.SHIP_DANGER, curses.COLOR_BLACK, curses.COLOR_YELLOW)
+        curses.init_pair(dstate.SHIP_SUNK, curses.COLOR_BLACK, curses.COLOR_RED)
+
+        #for c in range(0, len(visual_boards)):
+        #    for j in range(0, width):
+        #        display.addstr(0, offset_x + c * (width+3) + j, str(j+1))
+
+        #for i in range(0, height):
+        #    for c in range(0, len(visual_boards)):
+        #        display.addstr(offset_y + i, c * (width+3), chr(i + 65))
+        #        for j in range(0, width):
+        #            state_chr = str(visual_boards[c][i][j])
+        #            state = states[state_chr] if state_chr in states else dstate.INIT
+        #            display.addstr(offset_y + i, offset_x + c * (width+3) + j, state_chr, curses.color_pair(state))
+
+        #for a in attacks:
+        #    char = str(visual_boards[-1][a[0]][a[1]])
+        #    state = dstate.HIT if char != '*' else dstate.MISS
+        #    display.addstr(offset_y + a[0], offset_x + a[1], char, curses.color_pair(state))
+
+        #curses.curs_set(1)
+        #display.move(3,5)
+        self.display.refresh(0, 0, 0, 0, self.display_height, self.display_width)
+
+    def get_coord(self):
+        display = self.display
+        display.nodelay(1)
+        while True:
+            try:
+                char = display.getch()
+            except:
+                pass
+
+            pos = display.getyx()
+            newpos = pos
+
+            display.addstr(1,2, str(char))
+
+            if char == 033:
+                display.getch()
+                char = display.getch()
+                if char == 65:  # up
+                    newpos = (pos[0] - 1, pos[1])
+                elif char == 66:  # down
+                    newpos = (pos[0] + 1, pos[1])
+                elif char == 67:  # right
+                    newpos = (pos[0], pos[1] + 1)
+                elif char == 68:  # left
+                    newpos = (pos[0], pos[1] - 1)
+                #display.addstr(4, 3, ' %s ' % char)
+
+            if newpos:
+                display.move(*newpos)
+
+            for i in range(0, self.display_width):
+                display.chgat(newpos[0], i, 1, curses.A_REVERSE)
+            for i in range(0, self.display_height):
+                display.chgat(i, newpos[1], 1, curses.A_REVERSE)
+
+            #display.hline(newpos[0], 0, '-', 10)
+            #display.vline(0, newpos[1], '|', 10)
+
+            display.refresh(0, 0, 0, 0, self.display_height, self.display_width)
+            time.sleep(0.01)
+
+def print_boards3(stdscr, *boards, **kwargs):
     """Prints an ASCII board representation using curses.
 
     boards:
@@ -103,20 +223,37 @@ def print_boards(stdscr, *boards, **kwargs):
     display.nodelay(1)
     while True:
         try:
-            char = display.getstr()
+            char = display.getch()
         except:
             pass
+
         pos = display.getyx()
+        newpos = pos
+
         display.addstr(1,2, str(char))
-        #display.addstr(21,2, str(pos))
-        if char == 113: break  # q
-        elif char == curses.KEY_RIGHT: display.move(pos[0],pos[1] + 1)
-        elif char == curses.KEY_LEFT: display.move(pos[0],pos[1] - 1)
-        elif char == curses.KEY_UP: display.move(pos[0] - 1, pos[1])
-        elif char == curses.KEY_DOWN: display.move(pos[0] + 1, pos[1])
-        display.refresh(0, 0, 0, 0, 1, 20)
-        curses.doupdate()
-        time.sleep(0.1)
+
+        if char == ord('\033'):
+            display.getch()
+            char = display.getch()
+            if char == 65:  # up
+                newpos = (pos[0] - 1, pos[1])
+            elif char == 66:  # down
+                newpos = (pos[0] + 1, pos[1])
+            elif char == 67:  # right
+                newpos = (pos[0], pos[1] + 1)
+            elif char == 68:  # left
+                newpos = (pos[0], pos[1] - 1)
+            #display.addstr(4, 3, ' %s ' % char)
+
+        if newpos:
+            display.move(*newpos)
+
+
+        #display.hline(newpos[0], 0, '-', 10)
+        #display.vline(0, newpos[1], '|', 10)
+
+        display.refresh(0, 0, 0, 0, display_height, display_width)
+        time.sleep(0.01)
 
 def print_boards2(*boards, **kwargs):
     """Prints an ASCII board representation to stdout. If this were fancier
@@ -207,86 +344,86 @@ class InvalidPositionException(Exception):
         super(InvalidPositionException, self).__init__()
         self.message = message
 
+def coord_as_string(self):
+    return chr(self.row + 65) + self.col
 
-class Coord(object):
-    """Class to manage different ways of inputting board positions"""
-    def __init__(self, raw_coord):
-        if isinstance(raw_coord, tuple):
-            # coord tuple must correspond to zero-based matrix (row, column)
-            self._set_tuple(raw_coord)
-        elif isinstance(raw_coord, str):
-            # coord string is alpha & 1-based like 'B3' or 'c10'
-            self._set_str(raw_coord)
-        else:
-            raise InvalidCoordException("Invalid format: " + type(raw_coord))
+# Immutable battleship coordinate class
+Coord = collections.namedtuple('Coord', ['row', 'col'])
+Coord.__str__ = coord_as_string
 
-    def _set_tuple(self, raw_coord):
-        """(Row, col) tuples must be zero-based (NUMBER, NUMBER)
-        """
+def make_coord(raw_coord):
+    if isinstance(raw_coord, Coord):
+        return raw_coord
+    elif isinstance(raw_coord, tuple):
+        # coord tuple must correspond to zero-based matrix (row, column)
         if len(raw_coord) < 2:
             raise InvalidCoordException("coord tuple must have 2 elements")
-        self._row = raw_coord[0]
-        self._col = raw_coord[1]
-
-    def _set_str(self, raw_coord):
-        """"String must be of the format <LETTER><NUMBER>, like 'b2' or 'F10'
-        """
+        return Coord(raw_coord[0], raw_coord[1])
+    elif isinstance(raw_coord, str):
+        # coord string is alpha & 1-based like 'B3' or 'c10'
         if len(raw_coord) < 2:
             raise InvalidCoordException("coord string must have 2+ elements")
-
         row = raw_coord[0]
         col = raw_coord[1:]
         if re.match('[a-zA-Z]', row):
-            self._row = ord(row.upper()) - 65
+            row = ord(row.upper()) - 65
         else:
             raise InvalidCoordException("coord elm 1 must be one alpha char")
 
         try:
-            self._col = int(col) - 1
-            if self._col < 0:
+            col = int(col) - 1
+            if col < 0:
                 raise Error
         except:
             raise InvalidCoordException("coord elm 2 must be column number >= 1")
-
-    def as_tuple(self):
-        return (self._row, self._col)
-
-    def as_string(self):
-        return chr(self._row + 65) + self._col
-
-def make_coord(coord):
-    if isinstance(coord, Coord):
-        return coord
+        return Coord(row, col)
     else:
-        return Coord(coord)
+        raise InvalidCoordException("Invalid format: " + type(raw_coord))
+
 
 class Board(object):
-    """A local representation of the a board."""
+    """Local representation of board state.
+    This includes:
+        ships (and positions when known),
+        coords of past attacks,
+        functions to modify the board using domain terminology."""
 
     def __init__(self, ships_and_positions=None, height=10, width=10):
-        ships_and_positions = [] if not ships_and_positions else ships_and_positions
+        """Initializes the board for play with optional parameters.
+        Args:
+            ships_and_positions (array of tuples, optional):
+                Initializes the board with ships at positions calculated from
+                tuple. Format is (Ship, Coord, Direction)
+            height (int, optional): # of rows in the board, default is 10
+            width (int, optional): # of cols in the board, default is 10
+            """
         self.ships = []
-        self.ship_map = {}
-
-        # This is ugly and wasteful but I'm lazy right now
-        #self.theboard = []
-        #[self.theboard.append(['*' for i in range(0,width)]) for i in range(0,height)]
 
         self.height = height
         self.width = width
 
+        # Put ships on the board if provided
+        ships_and_positions = [] if not ships_and_positions else ships_and_positions
         for s in ships_and_positions:
             self.add_ship(s[i][0],
-                    make_coord(s[i][1]).as_tuple(),
+                    make_coord(s[i][1]),
                     s[i][2])
 
     def add_ship(self, ship, coord, direction='r'):
-        """Plops the specified ship at the specified coord with specified direction"""
+        """Plops a ship on the board.
+        Args:
+            ship (Ship): A Ship object to add to the board.
+            coord (Coord or tuple or str): location on the board
+            direction (str): orientation of the ship
+
+        Raises:
+            InvalidPositionException: If ship would collide with existing ship
+        """
         ship_id = len(self.ships)
-        self.set_ship_to_position(ship_id, ship, make_coord(coord).as_tuple(), direction)
+        self._set_ship_to_position(ship_id, ship, make_coord(coord), direction)
         self.ships.append(ship)
 
-    def set_ship_to_position(self, ship_id, ship, coord, direction):
+    def _set_ship_to_position(self, ship_id, ship, coord, direction):
         """Attempts to update the board to reflect a ship at a specified coord
         with specified direction.
         """
@@ -325,6 +462,8 @@ class Board(object):
 
 
 class Strategy(object):
+    """Class to encapsulate logic of analyzing the state of a board and returning
+    a valid coordinate to next attack."""
     def __init__(self):
         pass
 
@@ -332,6 +471,13 @@ class Strategy(object):
         """Analyzes the state of the board and returns a letter & number move"""
         pass
 
+class RandomAggro(Strategy):
+    """This strategy picks random coords until a hit is detected and then
+    aggressively tries to sink detected ship.
+    """
+    def get_move(board):
+
+        """"""
 
 class HumanStrategy(Strategy):
     def get_move(board):
@@ -422,8 +568,9 @@ if __name__ == '__main__':
         b.add_ship(Carrier(), "a2", 'r')
         b.add_ship(Battleship(), 'a9','d')
         b.add_ship(Patrol(), (2,1),'d')
-        attacks = map(lambda s: make_coord(s).as_tuple(), ["b2","a9","a10"])
-        curses.wrapper(print_boards, b, attacks=attacks, ship_display='size')
+        attacks = map(lambda s: make_coord(s), ["b2","a9","a10"])
+        d = Display(b, ship_display='size')
+        d.get_coord()
     except InvalidCoordException as ex:
         print ex.message
     except InvalidPositionException as e:
