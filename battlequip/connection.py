@@ -1,9 +1,10 @@
+import urllib
 import urllib2
 import urlparse
 import json
 from util import *
 
-class CommunicationError(Exception):
+class CommunicationException(Exception):
     def __init__(self, message):
         super(CommunicationException, self).__init__()
         self.message = message
@@ -22,15 +23,17 @@ class Connection(object):
         pass
 
 class ConnectionZ(Connection):
-    def __init__(self, host, port):
+    def __init__(self, host):
         """Prepares battleship connection for ongoing use.
 
         Args:
             host (str): the server game host
-            port (str or int): the port on host for server
 
         """
-        self.base_url = 'http://' + host + ':' + port
+        if host.find("http://") < 0:
+            self.base_url = 'http://' + host
+        else:
+            self.base_url = host
 
     def join(self, board, username='anon'):
         """Connects to a battleship server using the given name and board.
@@ -115,18 +118,21 @@ class ConnectionZ(Connection):
         """Does the 'heavy' lifting of communicating with the server and
         parsing the response.
         """
-        if encode_request:
-            data = urllib.urlencode(kwargs)
-        else:
-            data = json.dumps(kwargs)
-
+        # Encode the data; also server doesn't like single quotes
+        data = urllib.urlencode(kwargs).replace('%27','%22')
         url = urlparse.urljoin(self.base_url, path)
 
         try:
-            res = urllib2.urlopen(url, data).read()
+            if encode_request:
+                url = url + '?' + data
+                res = urllib2.urlopen(url).read()
+            else:
+                res = urllib2.urlopen(url, data).read()
         except ValueError:
             raise CommunicationException("Malformed url")
         except urllib2.URLError as urlerr:
+            print 'Url: %s' % url
+            print urlerr
             raise CommunicationException("Could not communicate with server")
 
         try:

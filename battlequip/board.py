@@ -102,7 +102,7 @@ class Board(object):
         else:
             # hit MUST be a bool, we are logging an attack on foreign fleet
             if not isinstance(hit, bool):
-                raise InvalidAttackException()
+                raise InvalidAttackException(coord)
 
             a = Attack(coord, hit, sunk)
             self.attacks.append(a)

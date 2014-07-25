@@ -273,7 +273,7 @@ def print_boards2(*boards, **kwargs):
                 visual_boards[-1][p[0]][p[1]] = getattr(s, ship_display)
         #
         for a in b.attacks:
-            visual_boards[-1][a.coord[0]][a.coord[1]] = 'X' if visual_boards[-1][a.coord[0]][a.coord[1]] != ' ' else 'O'
+            visual_boards[-1][a.coord[0]][a.coord[1]] = 'X' if a.hit else 'O'
     sys.stdout.write('    ')
     for j in range(0, width):
         sys.stdout.write('%-2s' % (j+1))
