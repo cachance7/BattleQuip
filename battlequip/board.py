@@ -97,6 +97,7 @@ class Board(object):
 
             # No ship was hit
             a = Attack(coord, False)
+            self.attacks.append(a)
             return a
         else:
             # hit MUST be a bool, we are logging an attack on foreign fleet
