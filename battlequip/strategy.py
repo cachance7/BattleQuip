@@ -1,4 +1,5 @@
 from util import *
+import random
 
 class StrategyStateException(Exception):
     def __init__(self, message):
@@ -50,7 +51,7 @@ class HuntTarget(Strategy):
                 return self.stack.pop()
 
         # hunt mode
-        return self._next_untested()
+        return self._next_untested_random()
 
     def _mark_inspect(self, coord):
         self.board[coord.row][coord.col] = 1
@@ -84,6 +85,19 @@ class HuntTarget(Strategy):
                     return make_coord(r,c)
 
         raise StrategyStateException('Game is over')
+
+    def _next_untested_random(self):
+        """Grabs the next untested coord randomly."""
+        choices = []
+        for r in xrange(0, self.height):
+            for c in xrange(0, self.width):
+                if self.board[r][c] == 0:
+                    choices.append((r,c))
+
+        if len(choices) == 0:
+            raise StrategyStateException('Game is over')
+
+        return make_coord(choices[random.randint(0, len(choices)-1)])
 
 
 class HumanStrategy(Strategy):

@@ -26,7 +26,8 @@ def main():
         a = b.attack(c)
         display.print_boards2(b)
         count += 1
-        time.sleep(1)
+        time.sleep(0.4)
+    print 'It took %i turns to find all the ships' % count
     #d = Display(b)
 
 if __name__ == '__main__':

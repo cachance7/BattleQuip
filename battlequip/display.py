@@ -266,34 +266,46 @@ def print_boards2(*boards, **kwargs):
     # Build the internal display structure in layers
     for b in boards:
         # All spaces start out empty (represented by a *)
-        visual_boards.append([['*' for x in xrange(width)] for x in xrange(height)])
+        visual_boards.append([[' ' for x in xrange(width)] for x in xrange(height)])
         # Add in the ships
         for s in b.ships:
             for p in s.coords:
                 visual_boards[-1][p[0]][p[1]] = getattr(s, ship_display)
         #
         for a in b.attacks:
-            visual_boards[-1][a.coord[0]][a.coord[1]] = 'X' if visual_boards[-1][a.coord[0]][a.coord[1]] != '*' else 'O'
+            visual_boards[-1][a.coord[0]][a.coord[1]] = 'X' if visual_boards[-1][a.coord[0]][a.coord[1]] != ' ' else 'O'
     sys.stdout.write('    ')
     for j in range(0, width):
-        sys.stdout.write('%-3s' % (j+1))
+        sys.stdout.write('%-2s' % (j+1))
 
     for c in range(1, len(visual_boards)):
         sys.stdout.write('         ')
         for j in range(0, width):
             sys.stdout.write('%-3s' % (j+1))
-    sys.stdout.write('\n\n')
+    sys.stdout.write('\n')
+
+    sys.stdout.write('   ')
+    for j in range(0, width):
+        sys.stdout.write('--')
+    sys.stdout.write('-')
+    sys.stdout.write('\n')
 
     for i in range(0, height):
-        sys.stdout.write('%-4s' % chr(i + 65))
+        sys.stdout.write('%-3s' % chr(i + 65))
         for j in range(0, width):
-            sys.stdout.write('%-3s' % visual_boards[0][i][j])
+            sys.stdout.write('|%s' % visual_boards[0][i][j])
+        sys.stdout.write('|')
         for c in range(1, len(visual_boards)):
             sys.stdout.write('     ')
             sys.stdout.write('%-4s' % chr(i + 65))
             for j in range(0, width):
                 sys.stdout.write('%-3s' % visual_boards[c][i][j])
-        print '\n'
+        sys.stdout.write('\n')
+        sys.stdout.write('   ')
+        for j in range(0, width):
+            sys.stdout.write('--')
+        sys.stdout.write('-')
+        sys.stdout.write('\n')
 # }}}
 
 
