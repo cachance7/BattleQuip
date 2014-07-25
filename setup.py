@@ -10,7 +10,7 @@ setup(
     url='http://pypi.python.org/pypi/BattleQuip/',
     license='LICENSE.txt',
     description='A chatty Battleship client.',
-    long_description=open('README.md').read(),
+    long_description=open('README.txt').read(),
     install_requires=[
     ],
 )
