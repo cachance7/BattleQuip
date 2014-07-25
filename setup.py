@@ -6,7 +6,7 @@ setup(
     author='Casey Chance',
     author_email='caseyjchance@gmail.com',
     packages=['battlequip', 'battlequip.test'],
-    scripts=['bin/stowe-towels.py','bin/wash-towels.py'],
+    #scripts=['bin/stowe-towels.py','bin/wash-towels.py'],
     url='http://pypi.python.org/pypi/BattleQuip/',
     license='LICENSE.txt',
     description='A chatty Battleship client.',
